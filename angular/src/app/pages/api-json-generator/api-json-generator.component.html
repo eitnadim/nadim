@@ -1,0 +1,389 @@
+<div class="page-shell">
+  <app-sidebar [projectId]="projectId" />
+
+  <main class="main-content">
+
+    <!-- Toast -->
+    @if (toast) {
+      <div class="toast" [ngClass]="'toast-' + toast.type">
+        <i class="bi" [class.bi-check-circle-fill]="toast.type==='success'"
+           [class.bi-x-circle-fill]="toast.type==='error'"
+           [class.bi-info-circle-fill]="toast.type==='info'"></i>
+        {{ toast.msg }}
+      </div>
+    }
+
+    <!-- ══ LIST VIEW ══════════════════════════════════════════ -->
+    @if (view === 'list') {
+
+      <div class="page-header">
+        <div>
+          <h1>API JSON Generator</h1>
+          <p>Create and manage JSON configurations for Form CRUD, Grid, Chart and SQL widgets</p>
+        </div>
+        <button class="btn-primary" (click)="openCreate()">
+          <i class="bi bi-plus-lg"></i> New configuration
+        </button>
+      </div>
+
+      <!-- Config type cards -->
+      <div class="type-cards">
+        @for (ct of CONFIG_TYPES; track ct.value) {
+          <div class="type-card" (click)="configType = ct.value; openCreate()">
+            <i class="bi" [ngClass]="ct.icon"></i>
+            <span>{{ ct.label }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- Search + table -->
+      <div class="table-card">
+        <div class="table-head">
+          <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" [(ngModel)]="searchText" (ngModelChange)="applyFilter()"
+              placeholder="Search by name, type, table…">
+            @if (searchText) {
+              <button class="clear-btn" (click)="searchText=''; applyFilter()">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            }
+          </div>
+          <div class="page-size">
+            Show
+            <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+              <option [value]="5">5</option>
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+            </select>
+          </div>
+        </div>
+
+        @if (isLoading) {
+          <div class="loading"><i class="bi bi-hourglass-split spin"></i> Loading…</div>
+        } @else if (pagedList.length === 0) {
+          <div class="empty">
+            <i class="bi bi-braces"></i>
+            <p>{{ searchText ? 'No results match your search' : 'No configurations yet — create one above' }}</p>
+          </div>
+        } @else {
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Schema.Table</th>
+                <th>Display</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of pagedList; track c.id) {
+                <tr>
+                  <td class="td-name">
+                    <i class="bi" [ngClass]="configTypeIcon(c.configType)"></i>
+                    {{ c.aliasName }}
+                  </td>
+                  <td><span class="type-badge" [ngClass]="c.configType">{{ configTypeLabel(c.configType) }}</span></td>
+                  <td class="td-mono">{{ c.schemaName }}.{{ c.tableName }}</td>
+                  <td><span class="display-pill">{{ c.displayType }}</span></td>
+                  <td class="td-actions">
+                    <button class="action-icon edit"   (click)="loadForEdit(c)"   title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="action-icon delete" (click)="deleteConfig(c)"  title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div class="pagination">
+            <div class="page-info">
+              Showing {{ (currentPage-1)*pageSize+1 }}–{{ currentPage*pageSize > filteredList.length ? filteredList.length : currentPage*pageSize }}
+              of {{ filteredList.length }}
+            </div>
+            <div class="page-controls">
+              <button class="page-btn" (click)="goToPage(1)"       [disabled]="currentPage===1"><i class="bi bi-chevron-double-left"></i></button>
+              <button class="page-btn" (click)="prevPage()"         [disabled]="currentPage===1"><i class="bi bi-chevron-left"></i></button>
+              @for (p of pageNumbers; track p) {
+                <button class="page-btn num" [class.active]="p===currentPage" (click)="goToPage(p)">{{ p }}</button>
+              }
+              <button class="page-btn" (click)="nextPage()"         [disabled]="currentPage===totalPages"><i class="bi bi-chevron-right"></i></button>
+              <button class="page-btn" (click)="goToPage(totalPages)" [disabled]="currentPage===totalPages"><i class="bi bi-chevron-double-right"></i></button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ══ FORM VIEW ══════════════════════════════════════════ -->
+    @if (view === 'form') {
+
+      <div class="form-header">
+        <button class="back-btn" (click)="goBack()">
+          <i class="bi bi-arrow-left"></i> Back
+        </button>
+        <div>
+          <h1>{{ editMode ? 'Edit configuration' : 'New configuration' }}</h1>
+          <p>Configure your JSON data source, filters and schema</p>
+        </div>
+      </div>
+
+      <div class="form-layout">
+
+        <!-- LEFT: form -->
+        <div class="form-col">
+
+          <!-- Basic info -->
+          <div class="form-card">
+            <div class="fc-title"><i class="bi bi-info-circle"></i> Basic information</div>
+            <div class="fg2">
+              <div class="field">
+                <label>Name <span class="req">*</span></label>
+                <input [(ngModel)]="aliasName" placeholder="e.g. User Management">
+              </div>
+              <div class="field">
+                <label>Config type</label>
+                <select [(ngModel)]="configType" (ngModelChange)="onConfigTypeChange()">
+                  @for (ct of CONFIG_TYPES; track ct.value) {
+                    <option [value]="ct.value">{{ ct.label }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field">
+                <label>Display type</label>
+                <select [(ngModel)]="displayType">
+                  @for (dt of displayTypesForCurrent; track dt) {
+                    <option [value]="dt">{{ dt }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field">
+                <label>Allowed roles</label>
+                <input [(ngModel)]="allowedRoles" placeholder="default, admin">
+                <span class="hint">Comma-separated</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table + column fetch -->
+          <div class="form-card">
+            <div class="fc-title"><i class="bi bi-database"></i> Table &amp; schema</div>
+            <div class="fetch-row">
+              <div class="field flex1">
+                <label>Schema <span class="req">*</span></label>
+                <input [(ngModel)]="schema" placeholder="e.g. public">
+              </div>
+              <div class="field flex1">
+                <label>Table <span class="req">*</span></label>
+                <input [(ngModel)]="tableName" placeholder="e.g. users">
+              </div>
+              <div class="field">
+                <label>Primary key</label>
+                <input [(ngModel)]="primaryKey" placeholder="id" style="width:90px">
+              </div>
+              <button class="fetch-btn" (click)="fetchColumns()" [disabled]="fetchingCols">
+                <i class="bi" [class.bi-download]="!fetchingCols" [class.bi-hourglass-split]="fetchingCols"
+                   [class.spin]="fetchingCols"></i>
+                {{ fetchingCols ? 'Fetching…' : 'Fetch columns' }}
+              </button>
+            </div>
+            @if (colFetchStatus) {
+              <div class="fetch-status" [class.ok]="colFetchOk">
+                <i class="bi" [class.bi-check-circle-fill]="colFetchOk" [class.bi-info-circle]="!colFetchOk"></i>
+                {{ colFetchStatus }}
+              </div>
+            }
+            @if (columns.length) {
+              <div class="col-chips">
+                @for (col of columns; track col.name) {
+                  <span class="col-chip">{{ col.name }}<span class="col-type">{{ col.type }}</span></span>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Data source mode -->
+          <div class="form-card">
+            <div class="fc-title"><i class="bi bi-filter"></i> Data source mode</div>
+            <div class="mode-tabs">
+              <button class="mode-tab" [class.active]="sourceMode==='table'"  (click)="sourceMode='table'">
+                <i class="bi bi-table"></i> Table only
+              </button>
+              <button class="mode-tab" [class.active]="sourceMode==='filter'" (click)="sourceMode='filter'">
+                <i class="bi bi-funnel"></i> Table + WHERE
+              </button>
+              <button class="mode-tab" [class.active]="sourceMode==='query'"  (click)="sourceMode='query'">
+                <i class="bi bi-code-slash"></i> Direct SQL
+              </button>
+            </div>
+
+            <!-- Table only -->
+            @if (sourceMode === 'table') {
+              <p class="mode-desc"><i class="bi bi-info-circle"></i> Returns all rows from the table with no filtering.</p>
+            }
+
+            <!-- Table + WHERE -->
+            @if (sourceMode === 'filter') {
+              <div class="where-section">
+                <div class="where-head">
+                  <div class="logic-btns">
+                    <button class="logic-btn" [class.active]="filterLogic==='AND'" (click)="filterLogic='AND'">AND</button>
+                    <button class="logic-btn" [class.active]="filterLogic==='OR'"  (click)="filterLogic='OR'">OR</button>
+                  </div>
+                  <button class="add-filter-btn" (click)="addFilter(false)"
+                    [disabled]="!columns.length" title="{{ columns.length ? '' : 'Fetch columns first' }}">
+                    <i class="bi bi-plus-lg"></i> Add condition
+                  </button>
+                </div>
+                @if (!columns.length) {
+                  <p class="hint-warn"><i class="bi bi-exclamation-triangle"></i> Fetch columns first to enable the filter dropdown.</p>
+                }
+                @for (f of filters; let i = $index; track i) {
+                  <div class="filter-row">
+                    <div class="field flex1">
+                      <label class="label-sm">Param key</label>
+                      <input [(ngModel)]="f.param" placeholder="statusFilter">
+                    </div>
+                    <div class="field flex1">
+                      <label class="label-sm">Column</label>
+                      <select [(ngModel)]="f.column">
+                        @for (col of columns; track col.name) {
+                          <option [value]="col.name">{{ col.name }} ({{ col.type }})</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="field" style="width:120px">
+                      <label class="label-sm">Operator</label>
+                      <select [(ngModel)]="f.operator">
+                        @for (op of OPERATORS; track op) {
+                          <option [value]="op">{{ op }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="field flex1">
+                      <label class="label-sm">Default value</label>
+                      <input [(ngModel)]="f.default" placeholder="value">
+                    </div>
+                    <div class="field" style="width:100px">
+                      <label class="label-sm">Input type</label>
+                      <select [(ngModel)]="f.inputType">
+                        @for (it of INPUT_TYPES; track it) {
+                          <option [value]="it">{{ it }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="field" style="width:70px">
+                      <label class="label-sm">Required</label>
+                      <select [(ngModel)]="f.required">
+                        <option [value]="false">No</option>
+                        <option [value]="true">Yes</option>
+                      </select>
+                    </div>
+                    <button class="del-btn" (click)="removeFilter(i, false)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Direct SQL -->
+            @if (sourceMode === 'query') {
+              <div class="field" style="margin-bottom:14px">
+                <label>SQL query <span class="req">*</span></label>
+                <textarea [(ngModel)]="sqlQuery" rows="5"
+                  placeholder="SELECT u.id, u.name FROM public.users u WHERE u.active = true ORDER BY u.created_at DESC"></textarea>
+              </div>
+
+              <div class="where-section">
+                <div class="fc-subtitle">Dynamic WHERE conditions</div>
+                <div class="where-head">
+                  <div class="logic-btns">
+                    <button class="logic-btn" [class.active]="sqlFilterLogic==='AND'" (click)="sqlFilterLogic='AND'">AND</button>
+                    <button class="logic-btn" [class.active]="sqlFilterLogic==='OR'"  (click)="sqlFilterLogic='OR'">OR</button>
+                  </div>
+                  <button class="add-filter-btn" (click)="addFilter(true)" [disabled]="!columns.length">
+                    <i class="bi bi-plus-lg"></i> Add condition
+                  </button>
+                </div>
+                @for (f of sqlFilters; let i = $index; track i) {
+                  <div class="filter-row">
+                    <div class="field flex1">
+                      <label class="label-sm">Param key</label>
+                      <input [(ngModel)]="f.param" placeholder="statusFilter">
+                    </div>
+                    <div class="field flex1">
+                      <label class="label-sm">Column</label>
+                      <select [(ngModel)]="f.column">
+                        @for (col of columns; track col.name) {
+                          <option [value]="col.name">{{ col.name }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="field" style="width:120px">
+                      <label class="label-sm">Operator</label>
+                      <select [(ngModel)]="f.operator">
+                        @for (op of OPERATORS; track op) {
+                          <option [value]="op">{{ op }}</option>
+                        }
+                      </select>
+                    </div>
+                    @if (needsValue(f.operator)) {
+                      <div class="field flex1">
+                        <label class="label-sm">Default</label>
+                        <input [(ngModel)]="f.default" placeholder="value">
+                      </div>
+                    }
+                    <div class="field" style="width:100px">
+                      <label class="label-sm">Input type</label>
+                      <select [(ngModel)]="f.inputType">
+                        @for (it of INPUT_TYPES; track it) {
+                          <option [value]="it">{{ it }}</option>
+                        }
+                      </select>
+                    </div>
+                    <button class="del-btn" (click)="removeFilter(i, true)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Actions -->
+          <div class="form-actions">
+            <button class="btn-cancel" (click)="goBack()">Cancel</button>
+            <button class="btn-outline" (click)="resetForm()">
+              <i class="bi bi-arrow-counterclockwise"></i> Reset
+            </button>
+            <button class="btn-primary" (click)="save()" [disabled]="isSaving">
+              @if (isSaving) { <i class="bi bi-hourglass-split spin"></i> Saving… }
+              @else { <i class="bi bi-cloud-check"></i> {{ editMode ? 'Update' : 'Save' }} }
+            </button>
+          </div>
+
+        </div>
+
+        <!-- RIGHT: JSON preview -->
+        <div class="preview-col">
+          <div class="preview-card">
+            <div class="preview-head">
+              <span><i class="bi bi-braces"></i> JSON preview</span>
+              <button class="copy-btn" (click)="copyJSON()">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+            </div>
+            <pre class="json-output">{{ configJSONString }}</pre>
+          </div>
+        </div>
+
+      </div>
+    }
+
+  </main>
+</div>
