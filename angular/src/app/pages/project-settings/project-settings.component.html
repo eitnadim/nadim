@@ -1,0 +1,182 @@
+<div class="settings-wrap">
+
+  @if (saved) {
+    <div class="save-toast"><i class="bi bi-check-circle-fill"></i> {{ savedMsg }}</div>
+  }
+
+  <div class="settings-tabs">
+    <button class="stab" [class.active]="activeTab==='server'"  (click)="activeTab='server'">
+      <i class="bi bi-server"></i> Servers
+    </button>
+    <button class="stab" [class.active]="activeTab==='s3'"     (click)="activeTab='s3'">
+      <i class="bi bi-cloud-upload"></i> S3 Storage
+    </button>
+    <button class="stab" [class.active]="activeTab==='passito'" (click)="activeTab='passito'">
+      <i class="bi bi-shield-lock"></i> Passito Auth
+    </button>
+  </div>
+
+  <!-- ── Server ────────────────────────────────────────────── -->
+  @if (activeTab === 'server') {
+    <div class="section-head">
+      <div>
+        <div class="sec-title">Deployment servers</div>
+        <div class="sec-sub">Servers used to deploy this project</div>
+      </div>
+      <button class="btn-primary" (click)="showAddServer = !showAddServer">
+        <i class="bi bi-plus-lg"></i> Add server
+      </button>
+    </div>
+
+    @if (showAddServer) {
+      <div class="add-card">
+        <div class="add-card-title"><i class="bi bi-server"></i> New server</div>
+        <div class="fg2">
+          <div class="field"><label>Name *</label><input [(ngModel)]="newServer.name" placeholder="Production Server"></div>
+          <div class="field"><label>IP address *</label><input [(ngModel)]="newServer.ipAddress" placeholder="192.168.1.100"></div>
+          <div class="field"><label>SSH port</label><input type="number" [(ngModel)]="newServer.port"></div>
+          <div class="field"><label>Username</label><input [(ngModel)]="newServer.username" placeholder="deploy"></div>
+          <div class="field"><label>Environment</label>
+            <select [(ngModel)]="newServer.env">
+              <option value="production">Production</option>
+              <option value="staging">Staging</option>
+              <option value="dev">Development</option>
+            </select>
+          </div>
+        </div>
+        <div class="add-actions">
+          <button class="btn-cancel" (click)="showAddServer=false">Cancel</button>
+          <button class="btn-primary" (click)="addServer()"><i class="bi bi-plus-lg"></i> Add</button>
+        </div>
+      </div>
+    }
+
+    <div class="server-list">
+      @for (s of servers; track s.name; let i = $index) {
+        <div class="server-row">
+          <div class="srv-icon"><i class="bi bi-server"></i></div>
+          <div class="srv-body">
+            <div class="srv-name">{{ s.name }}</div>
+            <div class="srv-meta">
+              <span><i class="bi bi-hdd-network"></i> {{ s.ipAddress }}:{{ s.port }}</span>
+              <span><i class="bi bi-person"></i> {{ s.username }}</span>
+              <span class="env-pill" [ngClass]="s.env">{{ s.env }}</span>
+            </div>
+          </div>
+          <button class="del-btn" (click)="removeServer(i)"><i class="bi bi-trash"></i></button>
+        </div>
+      }
+      @if (!servers.length) {
+        <div class="empty-state">
+          <i class="bi bi-server"></i>
+          <p>No servers added yet</p>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── S3 ─────────────────────────────────────────────────── -->
+  @if (activeTab === 's3') {
+    <div class="section-head">
+      <div>
+        <div class="sec-title">S3 storage</div>
+        <div class="sec-sub">File and asset storage for this project</div>
+      </div>
+    </div>
+    <div class="config-card">
+      <div class="fg2">
+        <div class="field"><label>Bucket name *</label><input [(ngModel)]="s3.bucketName" placeholder="my-bucket"></div>
+        <div class="field"><label>Region</label>
+          <select [(ngModel)]="s3.region">
+            <option value="ap-south-1">Asia Pacific (Mumbai)</option>
+            <option value="us-east-1">US East (N. Virginia)</option>
+            <option value="us-west-2">US West (Oregon)</option>
+            <option value="eu-west-1">Europe (Ireland)</option>
+            <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+          </select>
+        </div>
+        <div class="field span2"><label>Base URL</label>
+          <input [(ngModel)]="s3.baseUrl" placeholder="https://bucket.s3.amazonaws.com">
+        </div>
+        <div class="field"><label>Access key</label>
+          <input [(ngModel)]="s3.accessKey" placeholder="AKIAIOSFODNN7EXAMPLE">
+        </div>
+        <div class="field"><label>Secret key</label>
+          <div class="pw-wrap">
+            <input [type]="showS3Secret ? 'text' : 'password'" [(ngModel)]="s3.secretKey" placeholder="••••••••">
+            <button class="show-pw" (click)="showS3Secret = !showS3Secret">{{ showS3Secret ? 'Hide' : 'Show' }}</button>
+          </div>
+        </div>
+        <div class="field"><label>Path prefix</label>
+          <input [(ngModel)]="s3.pathPrefix" placeholder="uploads/">
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-primary" (click)="saveS3()"><i class="bi bi-cloud-check"></i> Save S3 config</button>
+      </div>
+    </div>
+  }
+
+  <!-- ── Passito ────────────────────────────────────────────── -->
+  @if (activeTab === 'passito') {
+    <div class="section-head">
+      <div>
+        <div class="sec-title">Passito authentication</div>
+        <div class="sec-sub">OAuth config for web and mobile clients</div>
+      </div>
+    </div>
+    <div class="sub-tabs">
+      <button class="sub-tab" [class.active]="passitoTab==='web'"    (click)="passitoTab='web'">
+        <i class="bi bi-globe"></i> Web
+      </button>
+      <button class="sub-tab" [class.active]="passitoTab==='mobile'" (click)="passitoTab='mobile'">
+        <i class="bi bi-phone"></i> Mobile
+      </button>
+    </div>
+    <div class="config-card">
+      @if (passitoTab === 'web') {
+        <div class="fg2">
+          <div class="field"><label>Client ID</label><input [(ngModel)]="web.clientId" placeholder="client-id"></div>
+          <div class="field"><label>Client secret</label>
+            <div class="pw-wrap">
+              <input [type]="showPassitoSecret ? 'text' : 'password'" [(ngModel)]="web.clientSecret" placeholder="••••••••">
+              <button class="show-pw" (click)="showPassitoSecret = !showPassitoSecret">{{ showPassitoSecret ? 'Hide' : 'Show' }}</button>
+            </div>
+          </div>
+          <div class="field span2"><label>Redirect URI</label>
+            <input [(ngModel)]="web.redirectUri" placeholder="https://app.example.com/auth/callback">
+          </div>
+          <div class="field span2"><label>Scopes</label>
+            <input [(ngModel)]="web.scopes" placeholder="openid profile email">
+            <span class="hint">Space-separated OAuth scopes</span>
+          </div>
+        </div>
+      }
+      @if (passitoTab === 'mobile') {
+        <div class="fg2">
+          <div class="field"><label>Client ID</label><input [(ngModel)]="mobile.clientId" placeholder="mobile-client-id"></div>
+          <div class="field"><label>Client secret</label>
+            <div class="pw-wrap">
+              <input [type]="showPassitoSecret ? 'text' : 'password'" [(ngModel)]="mobile.clientSecret" placeholder="••••••••">
+              <button class="show-pw" (click)="showPassitoSecret = !showPassitoSecret">{{ showPassitoSecret ? 'Hide' : 'Show' }}</button>
+            </div>
+          </div>
+          <div class="field"><label>Bundle ID *</label>
+            <input [(ngModel)]="mobile.bundleId" placeholder="com.company.app">
+            <span class="hint">iOS/Android bundle identifier</span>
+          </div>
+          <div class="field"><label>Deep link scheme</label>
+            <input [(ngModel)]="mobile.deepLinkScheme" placeholder="myapp://">
+          </div>
+          <div class="field span2"><label>Scopes</label>
+            <input [(ngModel)]="mobile.scopes" placeholder="openid profile email">
+          </div>
+        </div>
+      }
+      <div class="card-actions">
+        <button class="btn-primary" (click)="savePassito()"><i class="bi bi-shield-check"></i> Save auth config</button>
+      </div>
+    </div>
+  }
+
+</div>
