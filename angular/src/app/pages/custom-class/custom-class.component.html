@@ -1,0 +1,82 @@
+<div class="page-shell">
+  <app-sidebar [projectId]="projectId" />
+
+  <main class="main-content">
+    <header class="page-header">
+      <div>
+        <div class="breadcrumb">Project / Custom class</div>
+        <h1>Upload custom class</h1>
+        <p>Upload a <code>.java</code> file — it will be injected into <code>src/main/java/.../custom/</code></p>
+      </div>
+    </header>
+
+    <div class="upload-area"
+      [class.drag-over]="isDragOver"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave()"
+      (drop)="onDrop($event)">
+
+      @if (!selectedFile) {
+        <label class="upload-label" for="file-input">
+          <div class="upload-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <p class="upload-primary">Drop your .java file here</p>
+          <p class="upload-secondary">or <span class="upload-link">browse</span> to choose a file</p>
+          <input id="file-input" type="file" accept=".java" (change)="onFileSelect($event)" hidden />
+        </label>
+      } @else {
+        <div class="file-selected">
+          <div class="file-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+          </div>
+          <div class="file-info">
+            <span class="file-name">{{ selectedFile.name }}</span>
+            <span class="file-size">{{ (selectedFile.size / 1024).toFixed(1) }} KB</span>
+          </div>
+          <button class="remove-btn" (click)="clearFile()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      }
+    </div>
+
+    @if (uploadError) {
+      <div class="error-banner">{{ uploadError }}</div>
+    }
+
+    @if (result) {
+      <div class="result-card" [class.success]="result.success" [class.fail]="!result.success">
+        <div class="result-icon">
+          @if (result.success) {
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          } @else {
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          }
+        </div>
+        <div>
+          <p class="result-msg">{{ result.message }}</p>
+          @if (result.filePath) {
+            <code class="result-path">{{ result.filePath }}</code>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="actions">
+      <button class="inject-btn" (click)="upload()" [disabled]="!selectedFile || uploading">
+        @if (uploading) {
+          <span class="spinner"></span> Injecting into project...
+        } @else {
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Inject into Spring project
+        }
+      </button>
+    </div>
+
+    <div class="info-note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      The uploaded class will be placed inside your Spring Boot project under the <code>custom</code> sub-package. Run a <strong>Build</strong> from the dashboard after injecting.
+    </div>
+  </main>
+</div>
