@@ -1,0 +1,575 @@
+<div class="page-shell">
+  <app-sidebar [projectId]="projectId" />
+
+  <main class="main-content">
+    @if (loadingProject) {
+      <div class="loading-state"><i class="bi bi-hourglass-split"></i> Loading project...</div>
+    } @else if (project) {
+
+      <!-- Header -->
+      <header class="page-header">
+        <div>
+          <div class="breadcrumb">
+            <span>Projects</span><i class="bi bi-chevron-right"></i>
+            <span>{{ project.name }}</span>
+          </div>
+          <h1>{{ project.name }}</h1>
+          <p>{{ project.description || 'No description provided' }}</p>
+        </div>
+        <div class="action-bar">
+          <button class="action-btn build-btn"  (click)="build()"       [disabled]="buildLoading">
+            <i class="bi bi-hammer"></i>
+            {{ buildLoading ? 'Building…' : 'Build' }}
+          </button>
+          <button class="action-btn deploy-btn" (click)="deploy()"      [disabled]="deployLoading">
+            <i class="bi bi-rocket-takeoff"></i>
+            {{ deployLoading ? 'Deploying…' : 'Deploy' }}
+          </button>
+          <button class="action-btn dl-btn"     (click)="downloadZip()" [disabled]="downloadLoading">
+            <i class="bi bi-download"></i>
+            {{ downloadLoading ? 'Preparing…' : 'Download Angular' }}
+          </button>
+        </div>
+      </header>
+
+      <!-- Monitor cards -->
+      <div class="monitor-row">
+
+        <div class="monitor-card">
+          <div class="mc-label"><i class="bi bi-tag"></i> Latest version</div>
+          @if (latestBuild) {
+            <div class="version-info">
+              <div class="version-hash">
+                <i class="bi bi-git"></i> {{ shortHash(latestBuild.commitHash) }}
+                @if (latestBuild.branch) {
+                  <span class="branch-pill"><i class="bi bi-diagram-2"></i> {{ latestBuild.branch }}</span>
+                }
+              </div>
+              <div class="build-status-pill" [ngClass]="'pill-' + latestBuild.status.toLowerCase()">
+                <span class="dot"></span> {{ latestBuild.status }}
+              </div>
+            </div>
+            <div class="version-time">
+              <i class="bi bi-clock"></i>
+              {{ latestBuild.startedAt | date:'dd MMM yyyy, HH:mm' }}
+              <span class="duration">· {{ buildDuration(latestBuild) }}</span>
+            </div>
+          } @else {
+            <div class="no-data">No builds yet</div>
+          }
+        </div>
+
+        <div class="monitor-card">
+          <div class="mc-label"><i class="bi bi-activity"></i> Build health (last 5)</div>
+          <div class="health-rate" [ngClass]="buildSuccessRate >= 80 ? 'good' : buildSuccessRate >= 50 ? 'warn' : 'bad'">
+            {{ buildSuccessRate }}%
+          </div>
+          <div class="health-bar">
+            @for (log of buildLogs; track log.id) {
+              <div class="hbar-seg" [ngClass]="'seg-' + log.status.toLowerCase()"
+                   [title]="log.status + ' — ' + (log.startedAt | date:'dd MMM HH:mm')"
+                   (click)="selectLog(log); activeTab='builds'">
+              </div>
+            }
+            @for (i of emptySlots; track i) {
+              <div class="hbar-seg seg-empty"></div>
+            }
+          </div>
+          <div class="health-counts">
+            <span class="hc-ok"><i class="bi bi-check-circle-fill"></i> {{ successCount }} passed</span>
+            <span class="hc-fail"><i class="bi bi-x-circle-fill"></i> {{ failedCount }} failed</span>
+          </div>
+        </div>
+
+        <div class="monitor-card">
+          <div class="mc-label"><i class="bi bi-info-circle"></i> Project info</div>
+          <div class="info-rows">
+            <div class="ir"><span>Status</span>
+              <span class="badge" [ngClass]="'badge-' + project.status!.toLowerCase()">{{ project.status }}</span>
+            </div>
+            <div class="ir"><span>Java</span>    <span>{{ project.javaVersion }}</span></div>
+            <div class="ir"><span>Build</span>   <span>{{ project.buildTool }}</span></div>
+            <div class="ir"><span>Spring Boot</span><span>{{ project.springBootVersion }}</span></div>
+          </div>
+        </div>
+
+        <div class="monitor-card">
+          <div class="mc-label"><i class="bi bi-git"></i> Git</div>
+          <div class="git-card-inner">
+            @if (project.gitRepoUrl) {
+              <a [href]="project.gitRepoUrl" target="_blank" class="repo-link">
+                <i class="bi bi-box-arrow-up-right"></i> Open repository
+              </a>
+              <div class="git-meta"><i class="bi bi-envelope"></i> {{ project.gitInviteEmail }}</div>
+              <div class="git-meta">
+                <i class="bi bi-code-slash"></i>
+                <code>{{ project.groupId }}.{{ project.artifactId }}</code>
+              </div>
+            } @else {
+              <div class="git-not-connected">
+                <i class="bi bi-exclamation-triangle"></i>
+                Not connected to GitHub
+              </div>
+              <div class="git-meta"><i class="bi bi-envelope"></i> {{ project.gitInviteEmail }}</div>
+              <button class="connect-git-btn" (click)="connectGitHub()" [disabled]="connectingGit">
+                @if (connectingGit) { <i class="bi bi-hourglass-split spin"></i> Connecting… }
+                @else { <i class="bi bi-git"></i> Connect to GitHub }
+              </button>
+              @if (gitConnectMsg) {
+                <div class="git-connect-msg" [class.err]="gitConnectMsg.includes('failed')">
+                  {{ gitConnectMsg }}
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab" [class.active]="activeTab==='overview'"  (click)="activeTab='overview'">
+          <i class="bi bi-grid"></i> Overview
+        </button>
+        <button class="tab" [class.active]="activeTab==='builds'"   (click)="activeTab='builds'">
+          <i class="bi bi-hammer"></i> Build history
+          @if (buildLogs.length) { <span class="tab-count">{{ buildLogs.length }}</span> }
+        </button>
+        <button class="tab" [class.active]="activeTab==='database'" (click)="activeTab='database'">
+          <i class="bi bi-database-gear"></i> Database
+        </button>
+        <button class="tab" [class.active]="activeTab==='settings'" (click)="activeTab='settings'">
+          <i class="bi bi-sliders"></i> Settings
+        </button>
+        <button class="tab" [class.active]="activeTab==='deploy'"   (click)="activeTab='deploy'">
+          <i class="bi bi-rocket-takeoff"></i> Deploy
+        </button>
+      </div>
+
+      <!-- Overview tab -->
+      @if (activeTab === 'overview') {
+        <div class="overview-grid">
+          <div class="ov-section">
+            <div class="ov-title">Package details</div>
+            <div class="kv-list">
+              <div class="kv"><span>Group ID</span>    <code>{{ project.groupId }}</code></div>
+              <div class="kv"><span>Artifact ID</span> <code>{{ project.artifactId }}</code></div>
+              <div class="kv"><span>Package</span>     <code>{{ project.packageName }}</code></div>
+            </div>
+          </div>
+          <div class="ov-section">
+            <div class="ov-title">Quick actions</div>
+            <div class="quick-actions">
+              <button class="qa-btn" (click)="activeTab='builds'">
+                <i class="bi bi-clock-history"></i> View build history
+              </button>
+              <button class="qa-btn" (click)="activeTab='database'">
+                <i class="bi bi-database-gear"></i> Configure database
+              </button>
+              <button class="qa-btn" [routerLink]="['/project', projectId, 'custom-class']">
+                <i class="bi bi-file-earmark-code"></i> Upload custom class
+              </button>
+              <button class="qa-btn" [routerLink]="['/project', projectId, 'api-json']">
+                <i class="bi bi-braces"></i> API JSON generator
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Build history tab -->
+      @if (activeTab === 'builds') {
+        <div class="builds-layout">
+          <div class="build-list">
+            <div class="bl-head">
+              Last 5 builds
+              <button class="refresh-btn" (click)="loadBuildLogs()"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+            @if (loadingLogs) {
+              <div class="loading-inline"><i class="bi bi-hourglass-split"></i> Loading...</div>
+            } @else if (!buildLogs.length) {
+              <div class="no-builds">
+                <i class="bi bi-hammer" style="font-size:28px;display:block;margin-bottom:8px;opacity:0.3"></i>
+                No builds yet — click Build to start
+              </div>
+            } @else {
+              @for (log of buildLogs; track log.id) {
+                <div class="build-item" [class.selected]="selectedLog?.id === log.id" (click)="selectLog(log)">
+                  <div class="bi-status-dot" [ngClass]="'dot-' + log.status.toLowerCase()">
+                    @if (log.status === 'RUNNING') { <i class="bi bi-arrow-repeat spin"></i> }
+                    @else if (log.status === 'SUCCESS') { <i class="bi bi-check-lg"></i> }
+                    @else { <i class="bi bi-x-lg"></i> }
+                  </div>
+                  <div class="bi-body">
+                    <div class="bi-top">
+                      <span class="bi-status" [ngClass]="'status-' + log.status.toLowerCase()">{{ log.status }}</span>
+                      <span class="bi-hash">{{ shortHash(log.commitHash) }}</span>
+                      @if (log.branch) {
+                        <span class="bi-branch"><i class="bi bi-diagram-2"></i> {{ log.branch }}</span>
+                      }
+                    </div>
+                    <div class="bi-meta">
+                      <span><i class="bi bi-clock"></i> {{ log.startedAt | date:'dd MMM, HH:mm' }}</span>
+                      <span><i class="bi bi-stopwatch"></i> {{ buildDuration(log) }}</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+          <div class="log-viewer">
+            @if (selectedLog) {
+              <div class="lv-head">
+                <div class="lv-head-left">
+                  <span class="lv-status" [ngClass]="'status-' + selectedLog.status.toLowerCase()">{{ selectedLog.status }}</span>
+                  <span class="lv-hash">{{ shortHash(selectedLog.commitHash) }}</span>
+                  <span class="lv-time">{{ selectedLog.startedAt | date:'dd MMM yyyy, HH:mm:ss' }}</span>
+                </div>
+                <span class="lv-duration">{{ buildDuration(selectedLog) }}</span>
+              </div>
+              <pre class="log-output">{{ selectedLog.logs || 'Waiting for logs…' }}</pre>
+            } @else {
+              <div class="lv-empty">
+                <i class="bi bi-terminal" style="font-size:32px;display:block;margin-bottom:10px;opacity:0.25"></i>
+                Select a build to view logs
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Database tab -->
+      @if (activeTab === 'database') {
+        <div class="db-tab">
+          <app-project-db-config [projectId]="projectId" />
+        </div>
+      }
+
+      <!-- Settings tab — server, S3, Passito per project -->
+      @if (activeTab === 'settings') {
+        <app-project-settings [projectId]="projectId" />
+      }
+
+      <!-- Deploy tab -->
+      @if (activeTab === 'deploy') {
+        <div class="deploy-section">
+          @if (deployResult) {
+            <div class="deploy-result" [ngClass]="deployResult.status === 'SUCCESS' ? 'dr-success' : 'dr-failed'">
+              <div class="dr-icon">
+                @if (deployResult.status === 'SUCCESS') { <i class="bi bi-check-circle-fill"></i> }
+                @else { <i class="bi bi-x-circle-fill"></i> }
+              </div>
+              <div>
+                <div class="dr-status">{{ deployResult.status }}</div>
+                @if (deployResult.url) {
+                  <a [href]="deployResult.url" target="_blank" class="dr-url">
+                    <i class="bi bi-box-arrow-up-right"></i> {{ deployResult.url }}
+                  </a>
+                }
+                <pre class="log-output" style="margin-top:12px">{{ deployResult.logs }}</pre>
+              </div>
+            </div>
+          } @else {
+            <div class="deploy-cta">
+              <i class="bi bi-rocket-takeoff"></i>
+              <h3>Ready to deploy?</h3>
+              <p>Make sure a successful build exists first. Deployment requires 3-level admin approval — an email will be sent to all approvers.</p>
+              <button class="action-btn deploy-btn" (click)="deploy()" [disabled]="deployLoading">
+                <i class="bi bi-rocket-takeoff"></i>
+                {{ deployLoading ? 'Sending for approval…' : 'Request deploy' }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+    }
+  </main>
+</div><div class="page-shell">
+  <app-sidebar [projectId]="projectId" />
+
+  <main class="main-content">
+    @if (loadingProject) {
+      <div class="loading-state"><i class="bi bi-hourglass-split"></i> Loading project...</div>
+    } @else if (project) {
+
+      <!-- Header -->
+      <header class="page-header">
+        <div>
+          <div class="breadcrumb">
+            <span>Projects</span><i class="bi bi-chevron-right"></i>
+            <span>{{ project.name }}</span>
+          </div>
+          <h1>{{ project.name }}</h1>
+          <p>{{ project.description || 'No description provided' }}</p>
+        </div>
+        <div class="action-bar">
+          <button class="action-btn build-btn"  (click)="build()"       [disabled]="buildLoading">
+            <i class="bi bi-hammer"></i>
+            {{ buildLoading ? 'Building…' : 'Build' }}
+          </button>
+          <button class="action-btn deploy-btn" (click)="deploy()"      [disabled]="deployLoading">
+            <i class="bi bi-rocket-takeoff"></i>
+            {{ deployLoading ? 'Deploying…' : 'Deploy' }}
+          </button>
+          <button class="action-btn dl-btn"     (click)="downloadZip()" [disabled]="downloadLoading">
+            <i class="bi bi-download"></i>
+            {{ downloadLoading ? 'Preparing…' : 'Download Angular' }}
+          </button>
+        </div>
+      </header>
+
+      <!-- Monitor cards -->
+      <div class="monitor-row">
+
+        <div class="monitor-card">
+          <div class="mc-label"><i class="bi bi-tag"></i> Latest version</div>
+          @if (latestBuild) {
+            <div class="version-info">
+              <div class="version-hash">
+                <i class="bi bi-git"></i> {{ shortHash(latestBuild.commitHash) }}
+                @if (latestBuild.branch) {
+                  <span class="branch-pill"><i class="bi bi-diagram-2"></i> {{ latestBuild.branch }}</span>
+                }
+              </div>
+              <div class="build-status-pill" [ngClass]="'pill-' + latestBuild.status.toLowerCase()">
+                <span class="dot"></span> {{ latestBuild.status }}
+              </div>
+            </div>
+            <div class="version-time">
+              <i class="bi bi-clock"></i>
+              {{ latestBuild.startedAt | date:'dd MMM yyyy, HH:mm' }}
+              <span class="duration">· {{ buildDuration(latestBuild) }}</span>
+            </div>
+          } @else {
+            <div class="no-data">No builds yet</div>
+          }
+        </div>
+
+        <div class="monitor-card">
+          <div class="mc-label"><i class="bi bi-activity"></i> Build health (last 5)</div>
+          <div class="health-rate" [ngClass]="buildSuccessRate >= 80 ? 'good' : buildSuccessRate >= 50 ? 'warn' : 'bad'">
+            {{ buildSuccessRate }}%
+          </div>
+          <div class="health-bar">
+            @for (log of buildLogs; track log.id) {
+              <div class="hbar-seg" [ngClass]="'seg-' + log.status.toLowerCase()"
+                   [title]="log.status + ' — ' + (log.startedAt | date:'dd MMM HH:mm')"
+                   (click)="selectLog(log); activeTab='builds'">
+              </div>
+            }
+            @for (i of emptySlots; track i) {
+              <div class="hbar-seg seg-empty"></div>
+            }
+          </div>
+          <div class="health-counts">
+            <span class="hc-ok"><i class="bi bi-check-circle-fill"></i> {{ successCount }} passed</span>
+            <span class="hc-fail"><i class="bi bi-x-circle-fill"></i> {{ failedCount }} failed</span>
+          </div>
+        </div>
+
+        <div class="monitor-card">
+          <div class="mc-label"><i class="bi bi-info-circle"></i> Project info</div>
+          <div class="info-rows">
+            <div class="ir"><span>Status</span>
+              <span class="badge" [ngClass]="'badge-' + project.status!.toLowerCase()">{{ project.status }}</span>
+            </div>
+            <div class="ir"><span>Java</span>    <span>{{ project.javaVersion }}</span></div>
+            <div class="ir"><span>Build</span>   <span>{{ project.buildTool }}</span></div>
+            <div class="ir"><span>Spring Boot</span><span>{{ project.springBootVersion }}</span></div>
+          </div>
+        </div>
+
+        <div class="monitor-card">
+          <div class="mc-label"><i class="bi bi-git"></i> Git</div>
+          <div class="git-card-inner">
+            @if (project.gitRepoUrl) {
+              <a [href]="project.gitRepoUrl" target="_blank" class="repo-link">
+                <i class="bi bi-box-arrow-up-right"></i> Open repository
+              </a>
+              <div class="git-meta"><i class="bi bi-envelope"></i> {{ project.gitInviteEmail }}</div>
+              <div class="git-meta">
+                <i class="bi bi-code-slash"></i>
+                <code>{{ project.groupId }}.{{ project.artifactId }}</code>
+              </div>
+            } @else {
+              <div class="git-not-connected">
+                <i class="bi bi-exclamation-triangle"></i>
+                Not connected to GitHub
+              </div>
+              <div class="git-meta"><i class="bi bi-envelope"></i> {{ project.gitInviteEmail }}</div>
+              <button class="connect-git-btn" (click)="connectGitHub()" [disabled]="connectingGit">
+                @if (connectingGit) { <i class="bi bi-hourglass-split spin"></i> Connecting… }
+                @else { <i class="bi bi-git"></i> Connect to GitHub }
+              </button>
+              @if (gitConnectMsg) {
+                <div class="git-connect-msg" [class.err]="gitConnectMsg.includes('failed')">
+                  {{ gitConnectMsg }}
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab" [class.active]="activeTab==='overview'"  (click)="activeTab='overview'">
+          <i class="bi bi-grid"></i> Overview
+        </button>
+        <button class="tab" [class.active]="activeTab==='builds'"   (click)="activeTab='builds'">
+          <i class="bi bi-hammer"></i> Build history
+          @if (buildLogs.length) { <span class="tab-count">{{ buildLogs.length }}</span> }
+        </button>
+        <button class="tab" [class.active]="activeTab==='database'" (click)="activeTab='database'">
+          <i class="bi bi-database-gear"></i> Database
+        </button>
+        <button class="tab" [class.active]="activeTab==='settings'" (click)="activeTab='settings'">
+          <i class="bi bi-sliders"></i> Settings
+        </button>
+        <button class="tab" [class.active]="activeTab==='deploy'"   (click)="activeTab='deploy'">
+          <i class="bi bi-rocket-takeoff"></i> Deploy
+        </button>
+      </div>
+
+      <!-- Overview tab -->
+      @if (activeTab === 'overview') {
+        <div class="overview-grid">
+          <div class="ov-section">
+            <div class="ov-title">Package details</div>
+            <div class="kv-list">
+              <div class="kv"><span>Group ID</span>    <code>{{ project.groupId }}</code></div>
+              <div class="kv"><span>Artifact ID</span> <code>{{ project.artifactId }}</code></div>
+              <div class="kv"><span>Package</span>     <code>{{ project.packageName }}</code></div>
+            </div>
+          </div>
+          <div class="ov-section">
+            <div class="ov-title">Quick actions</div>
+            <div class="quick-actions">
+              <button class="qa-btn" (click)="activeTab='builds'">
+                <i class="bi bi-clock-history"></i> View build history
+              </button>
+              <button class="qa-btn" (click)="activeTab='database'">
+                <i class="bi bi-database-gear"></i> Configure database
+              </button>
+              <button class="qa-btn" [routerLink]="['/project', projectId, 'custom-class']">
+                <i class="bi bi-file-earmark-code"></i> Upload custom class
+              </button>
+              <button class="qa-btn" [routerLink]="['/project', projectId, 'api-json']">
+                <i class="bi bi-braces"></i> API JSON generator
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Build history tab -->
+      @if (activeTab === 'builds') {
+        <div class="builds-layout">
+          <div class="build-list">
+            <div class="bl-head">
+              Last 5 builds
+              <button class="refresh-btn" (click)="loadBuildLogs()"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+            @if (loadingLogs) {
+              <div class="loading-inline"><i class="bi bi-hourglass-split"></i> Loading...</div>
+            } @else if (!buildLogs.length) {
+              <div class="no-builds">
+                <i class="bi bi-hammer" style="font-size:28px;display:block;margin-bottom:8px;opacity:0.3"></i>
+                No builds yet — click Build to start
+              </div>
+            } @else {
+              @for (log of buildLogs; track log.id) {
+                <div class="build-item" [class.selected]="selectedLog?.id === log.id" (click)="selectLog(log)">
+                  <div class="bi-status-dot" [ngClass]="'dot-' + log.status.toLowerCase()">
+                    @if (log.status === 'RUNNING') { <i class="bi bi-arrow-repeat spin"></i> }
+                    @else if (log.status === 'SUCCESS') { <i class="bi bi-check-lg"></i> }
+                    @else { <i class="bi bi-x-lg"></i> }
+                  </div>
+                  <div class="bi-body">
+                    <div class="bi-top">
+                      <span class="bi-status" [ngClass]="'status-' + log.status.toLowerCase()">{{ log.status }}</span>
+                      <span class="bi-hash">{{ shortHash(log.commitHash) }}</span>
+                      @if (log.branch) {
+                        <span class="bi-branch"><i class="bi bi-diagram-2"></i> {{ log.branch }}</span>
+                      }
+                    </div>
+                    <div class="bi-meta">
+                      <span><i class="bi bi-clock"></i> {{ log.startedAt | date:'dd MMM, HH:mm' }}</span>
+                      <span><i class="bi bi-stopwatch"></i> {{ buildDuration(log) }}</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+          <div class="log-viewer">
+            @if (selectedLog) {
+              <div class="lv-head">
+                <div class="lv-head-left">
+                  <span class="lv-status" [ngClass]="'status-' + selectedLog.status.toLowerCase()">{{ selectedLog.status }}</span>
+                  <span class="lv-hash">{{ shortHash(selectedLog.commitHash) }}</span>
+                  <span class="lv-time">{{ selectedLog.startedAt | date:'dd MMM yyyy, HH:mm:ss' }}</span>
+                </div>
+                <span class="lv-duration">{{ buildDuration(selectedLog) }}</span>
+              </div>
+              <pre class="log-output">{{ selectedLog.logs || 'Waiting for logs…' }}</pre>
+            } @else {
+              <div class="lv-empty">
+                <i class="bi bi-terminal" style="font-size:32px;display:block;margin-bottom:10px;opacity:0.25"></i>
+                Select a build to view logs
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Database tab -->
+      @if (activeTab === 'database') {
+        <div class="db-tab">
+          <app-project-db-config [projectId]="projectId" />
+        </div>
+      }
+
+      <!-- Settings tab — server, S3, Passito per project -->
+      @if (activeTab === 'settings') {
+        <app-project-settings [projectId]="projectId" />
+      }
+
+      <!-- Deploy tab -->
+      @if (activeTab === 'deploy') {
+        <div class="deploy-section">
+          @if (deployResult) {
+            <div class="deploy-result" [ngClass]="deployResult.status === 'SUCCESS' ? 'dr-success' : 'dr-failed'">
+              <div class="dr-icon">
+                @if (deployResult.status === 'SUCCESS') { <i class="bi bi-check-circle-fill"></i> }
+                @else { <i class="bi bi-x-circle-fill"></i> }
+              </div>
+              <div>
+                <div class="dr-status">{{ deployResult.status }}</div>
+                @if (deployResult.url) {
+                  <a [href]="deployResult.url" target="_blank" class="dr-url">
+                    <i class="bi bi-box-arrow-up-right"></i> {{ deployResult.url }}
+                  </a>
+                }
+                <pre class="log-output" style="margin-top:12px">{{ deployResult.logs }}</pre>
+              </div>
+            </div>
+          } @else {
+            <div class="deploy-cta">
+              <i class="bi bi-rocket-takeoff"></i>
+              <h3>Ready to deploy?</h3>
+              <p>Make sure a successful build exists first. Deployment requires 3-level admin approval — an email will be sent to all approvers.</p>
+              <button class="action-btn deploy-btn" (click)="deploy()" [disabled]="deployLoading">
+                <i class="bi bi-rocket-takeoff"></i>
+                {{ deployLoading ? 'Sending for approval…' : 'Request deploy' }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+    }
+  </main>
+</div>
