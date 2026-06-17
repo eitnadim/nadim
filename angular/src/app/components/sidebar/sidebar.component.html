@@ -1,0 +1,60 @@
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-block">
+      <span class="e">E</span>
+      <span class="i">I</span>
+      <span class="t">T</span>
+    </div>
+    <div class="brand-text">
+      <span class="brand-name">Framework</span>
+      <span class="brand-sub">v2.5 Platform</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <!-- Global nav -->
+    <a routerLink="/home" routerLinkActive="active" class="nav-item">
+      <i class="bi bi-house"></i> Home
+    </a>
+    <a routerLink="/configurations" routerLinkActive="active" class="nav-item">
+      <i class="bi bi-sliders"></i> Configuration
+    </a>
+
+    <!-- Project-scoped nav — only when inside a project -->
+    @if (projectId) {
+      <div class="nav-section-label">Current project</div>
+
+      <a [routerLink]="['/project', projectId]"
+         routerLinkActive="active"
+         [routerLinkActiveOptions]="{exact:true}"
+         class="nav-item">
+        <i class="bi bi-grid-1x2"></i> Dashboard
+      </a>
+
+      <a [routerLink]="['/project', projectId, 'api-json']"
+         routerLinkActive="active"
+         class="nav-item">
+        <i class="bi bi-braces"></i> API JSON
+      </a>
+
+      <a [routerLink]="['/project', projectId, 'custom-class']"
+         routerLinkActive="active"
+         class="nav-item">
+        <i class="bi bi-file-earmark-code"></i> Custom class
+      </a>
+    }
+
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-avatar">{{ initials }}</div>
+    <div class="user-info">
+      <span class="user-name">{{ user?.name }}</span>
+      <span class="user-email">{{ user?.email }}</span>
+    </div>
+    <button class="logout-btn" (click)="auth.logout()" title="Sign out">
+      <i class="bi bi-box-arrow-right"></i>
+    </button>
+  </div>
+</aside>
