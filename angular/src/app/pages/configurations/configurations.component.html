@@ -1,0 +1,122 @@
+<div class="page-shell">
+  <app-sidebar />
+
+  <main class="main-content">
+
+    @if (saved) {
+      <div class="save-toast">
+        <i class="bi bi-check-circle-fill"></i> {{ savedMsg }}
+      </div>
+    }
+
+    <div class="page-header">
+      <button class="back-btn" (click)="goBack()">
+        <i class="bi bi-arrow-left"></i> Back
+      </button>
+      <h1>Platform configuration</h1>
+      <p>Global platform settings — Jenkins, email and system defaults</p>
+    </div>
+
+    <div class="info-banner">
+      <i class="bi bi-info-circle-fill"></i>
+      <div>
+        <strong>Project-specific settings</strong> (server, S3, Passito auth, database)
+        are configured inside each project under the
+        <strong>Settings</strong> and <strong>Database</strong> tabs on the project dashboard.
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab" [class.active]="activeTab==='jenkins'" (click)="activeTab='jenkins'">
+        <i class="bi bi-gear-wide-connected"></i> Jenkins
+      </button>
+      <button class="tab" [class.active]="activeTab==='email'" (click)="activeTab='email'">
+        <i class="bi bi-envelope-at"></i> Email / SMTP
+      </button>
+    </div>
+
+    <!-- Jenkins -->
+    @if (activeTab === 'jenkins') {
+      <div class="section">
+        <div class="config-card">
+          <div class="card-title"><i class="bi bi-gear-wide-connected"></i> Jenkins pipeline</div>
+          <div class="fg2">
+            <div class="field span2">
+              <label>Jenkins base URL <span class="req">*</span></label>
+              <input [(ngModel)]="jenkins.baseUrl" placeholder="http://jenkins.eit.dev:8090">
+            </div>
+            <div class="field">
+              <label>API token <span class="req">*</span></label>
+              <div class="pw-wrap">
+                <input [type]="showJenkinsToken ? 'text' : 'password'"
+                  [(ngModel)]="jenkins.token" placeholder="••••••••••••••••">
+                <button class="show-pw" type="button" (click)="showJenkinsToken = !showJenkinsToken">
+                  {{ showJenkinsToken ? 'Hide' : 'Show' }}
+                </button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Job name</label>
+              <input [(ngModel)]="jenkins.jobName" placeholder="framework-build">
+            </div>
+            <div class="field">
+              <label>Username</label>
+              <input [(ngModel)]="jenkins.username" placeholder="admin">
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn-primary" (click)="saveJenkins()">
+              <i class="bi bi-save"></i> Save Jenkins config
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Email / SMTP -->
+    @if (activeTab === 'email') {
+      <div class="section">
+        <div class="config-card">
+          <div class="card-title"><i class="bi bi-envelope-at"></i> SMTP settings</div>
+          <div class="fg2">
+            <div class="field">
+              <label>SMTP host</label>
+              <input [(ngModel)]="smtp.host" placeholder="smtp.gmail.com">
+            </div>
+            <div class="field">
+              <label>SMTP port</label>
+              <input type="number" [(ngModel)]="smtp.port" placeholder="587">
+            </div>
+            <div class="field">
+              <label>Username / from email</label>
+              <input [(ngModel)]="smtp.username" placeholder="noreply@eit.dev">
+            </div>
+            <div class="field">
+              <label>Password / app password</label>
+              <div class="pw-wrap">
+                <input [type]="showSmtpPw ? 'text' : 'password'"
+                  [(ngModel)]="smtp.password" placeholder="••••••••">
+                <button class="show-pw" type="button" (click)="showSmtpPw = !showSmtpPw">
+                  {{ showSmtpPw ? 'Hide' : 'Show' }}
+                </button>
+              </div>
+            </div>
+            <div class="field span2">
+              <label class="toggle-label">
+                <input type="checkbox" [(ngModel)]="smtp.startTls">
+                <span class="toggle"></span>
+                Enable STARTTLS
+              </label>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn-primary" (click)="saveSmtp()">
+              <i class="bi bi-envelope-check"></i> Save SMTP config
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>
