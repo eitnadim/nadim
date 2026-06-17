@@ -1,0 +1,138 @@
+<!-- Toast -->
+@if (toast) {
+  <div class="db-toast" [ngClass]="'toast-' + toast.type">
+    <i class="bi" [class.bi-check-circle-fill]="toast.type==='success'"
+       [class.bi-x-circle-fill]="toast.type==='error'"
+       [class.bi-info-circle-fill]="toast.type==='info'"></i>
+    {{ toast.msg }}
+  </div>
+}
+
+<div class="db-config-wrap">
+
+  <!-- Header -->
+  <div class="db-header">
+    <div class="db-header-left">
+      <div class="db-icon"><i class="bi bi-database-fill-gear"></i></div>
+      <div>
+        <div class="db-title">Database connection</div>
+        <div class="db-sub">Configure the PostgreSQL database for this project</div>
+      </div>
+    </div>
+    <div class="db-status-badge" [ngClass]="statusClass">
+      @if (config.testStatus === 'SUCCESS') {
+        <i class="bi bi-check-circle-fill"></i> Connected
+      } @else if (config.testStatus === 'FAILED') {
+        <i class="bi bi-x-circle-fill"></i> Failed
+      } @else {
+        <i class="bi bi-dash-circle"></i> Not tested
+      }
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="db-loading"><i class="bi bi-hourglass-split spin"></i> Loading…</div>
+  } @else {
+
+    <div class="db-form">
+
+      <!-- Row 1: host + port -->
+      <div class="fg3">
+        <div class="field span2">
+          <label>Host <span class="req">*</span></label>
+          <input [(ngModel)]="config.dbHost" placeholder="localhost or 192.168.1.100">
+        </div>
+        <div class="field">
+          <label>Port</label>
+          <input type="number" [(ngModel)]="config.dbPort" placeholder="5432">
+        </div>
+      </div>
+
+      <!-- Row 2: db name + schema -->
+      <div class="fg2">
+        <div class="field">
+          <label>Database name <span class="req">*</span></label>
+          <input [(ngModel)]="config.dbName" placeholder="e.g. my_project_db">
+        </div>
+        <div class="field">
+          <label>Default schema</label>
+          <input [(ngModel)]="config.dbSchema" placeholder="public">
+        </div>
+      </div>
+
+      <!-- Row 3: username + password -->
+      <div class="fg2">
+        <div class="field">
+          <label>Username <span class="req">*</span></label>
+          <input [(ngModel)]="config.dbUsername" placeholder="postgres">
+        </div>
+        <div class="field">
+          <label>
+            Password
+            @if (exists) { <span class="hint-inline">— leave blank to keep existing</span> }
+            @else { <span class="req">*</span> }
+          </label>
+          <div class="pw-wrap">
+            <input [type]="showPw ? 'text' : 'password'"
+              [(ngModel)]="config.dbPassword"
+              [placeholder]="exists ? '••••••••' : 'Enter password'">
+            <button class="show-pw" type="button" (click)="showPw = !showPw">
+              {{ showPw ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SSL -->
+      <div class="ssl-row">
+        <label class="toggle-label">
+          <input type="checkbox" [(ngModel)]="config.sslEnabled">
+          <span class="toggle"></span>
+          Enable SSL (sslmode=require)
+        </label>
+      </div>
+
+      <!-- Test result -->
+      @if (testResult) {
+        <div class="test-result" [ngClass]="testResult.success ? 'tr-ok' : 'tr-fail'">
+          <i class="bi" [class.bi-check-circle-fill]="testResult.success"
+             [class.bi-x-circle-fill]="!testResult.success"></i>
+          <div>
+            <div class="tr-msg">{{ testResult.message }}</div>
+            @if (testResult.latencyMs) {
+              <div class="tr-latency">Latency: {{ testResult.latencyMs }}ms</div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Last tested info -->
+      @if (exists && config.lastTested) {
+        <div class="last-tested">
+          <i class="bi bi-clock"></i>
+          Last tested: {{ config.lastTested | date:'dd MMM yyyy, HH:mm' }}
+        </div>
+      }
+
+      <!-- Actions -->
+      <div class="db-actions">
+        <button class="btn-test" (click)="testConnection()" [disabled]="testing">
+          @if (testing) { <i class="bi bi-hourglass-split spin"></i> Testing… }
+          @else          { <i class="bi bi-wifi"></i> Test connection }
+        </button>
+        <div class="right-actions">
+          @if (exists) {
+            <button class="btn-remove" (click)="delete()">
+              <i class="bi bi-trash"></i> Remove
+            </button>
+          }
+          <button class="btn-save" (click)="save()" [disabled]="saving">
+            @if (saving) { <i class="bi bi-hourglass-split spin"></i> Saving… }
+            @else         { <i class="bi bi-cloud-check"></i> {{ exists ? 'Update' : 'Save connection' }} }
+          </button>
+        </div>
+      </div>
+
+    </div>
+  }
+</div>
