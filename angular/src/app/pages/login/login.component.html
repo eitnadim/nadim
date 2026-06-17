@@ -1,0 +1,96 @@
+<div class="login-shell">
+  <div class="login-left">
+    <div class="logo-area">
+      <div class="logo-block">
+        <span class="e">E</span><span class="i">I</span><span class="t">T</span>
+      </div>
+      <div class="logo-text">
+        <span class="name">EIT Framework</span>
+        <span class="sub">v2.5 Platform</span>
+      </div>
+    </div>
+
+    <div class="hero">
+      <h1>Build <span class="accent-navy">Spring Boot</span><br>projects <span class="accent-red">faster.</span></h1>
+      <p>Generate, configure and deploy — all from one workspace. Connect Git, inject custom classes, trigger Jenkins builds and ship with confidence.</p>
+    </div>
+
+    <div class="features">
+      <div class="feat">
+        <span class="feat-icon navy"><i class="bi bi-git"></i></span>
+        Auto Git repository setup + invitation
+      </div>
+      <div class="feat">
+        <span class="feat-icon red"><i class="bi bi-code-slash"></i></span>
+        Custom Java class injection
+      </div>
+      <div class="feat">
+        <span class="feat-icon navy"><i class="bi bi-hammer"></i></span>
+        Jenkins build pipeline integration
+      </div>
+      <div class="feat">
+        <span class="feat-icon red"><i class="bi bi-rocket-takeoff"></i></span>
+        3-level deploy approval workflow
+      </div>
+      <div class="feat">
+        <span class="feat-icon navy"><i class="bi bi-braces"></i></span>
+        API JSON form CRUD generator
+      </div>
+    </div>
+  </div>
+
+  <div class="login-right">
+    <div class="login-card">
+      <div class="card-header">
+        <div class="header-top">
+          <div class="header-icon"><i class="bi bi-shield-lock"></i></div>
+        </div>
+        <h2>Sign in to EIT Framework</h2>
+        <p>Enter your credentials to access the platform</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="form">
+        @if (error) {
+          <div class="error-box">
+            <i class="bi bi-exclamation-circle"></i> {{ error }}
+          </div>
+        }
+
+        <div class="field">
+          <label for="email">Email address</label>
+          <input id="email" type="email" formControlName="email"
+            placeholder="you@example.com"
+            [class.invalid]="form.get('email')?.invalid && form.get('email')?.touched"
+            autocomplete="email"/>
+          @if (form.get('email')?.invalid && form.get('email')?.touched) {
+            <span class="ferr"><i class="bi bi-x-circle"></i> Enter a valid email</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <input id="password" [type]="showPassword ? 'text' : 'password'"
+              formControlName="password" placeholder="••••••••"
+              [class.invalid]="form.get('password')?.invalid && form.get('password')?.touched"
+              autocomplete="current-password"/>
+            <button type="button" class="show-btn" (click)="showPassword = !showPassword">
+              {{ showPassword ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+          @if (form.get('password')?.invalid && form.get('password')?.touched) {
+            <span class="ferr"><i class="bi bi-x-circle"></i> Minimum 6 characters</span>
+          }
+        </div>
+
+        <button type="submit" class="submit-btn" [disabled]="loading">
+          @if (loading) {
+            <span class="spinner"></span> Signing in...
+          } @else {
+            <i class="bi bi-box-arrow-in-right"></i> Sign in
+          }
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
