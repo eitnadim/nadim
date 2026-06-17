@@ -1,0 +1,179 @@
+<div class="page-shell">
+  <app-sidebar />
+
+  <main class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1>Projects</h1>
+        <p>{{ projects.length }} project{{ projects.length !== 1 ? 's' : '' }} in your workspace</p>
+      </div>
+      <button class="btn-primary" (click)="openModal()">
+        <i class="bi bi-plus-lg"></i> New project
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon navy"><i class="bi bi-folder2"></i></div>
+        <div class="stat-info">
+          <div class="stat-num">{{ projects.length }}</div>
+          <div class="stat-lbl">Total projects</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+        <div class="stat-info">
+          <div class="stat-num">{{ activeCount }}</div>
+          <div class="stat-lbl">Active</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon amber"><i class="bi bi-hammer"></i></div>
+        <div class="stat-info">
+          <div class="stat-num">{{ buildingCount }}</div>
+          <div class="stat-lbl">Building</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+        <div class="stat-info">
+          <div class="stat-num">{{ failedCount }}</div>
+          <div class="stat-lbl">Failed</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <h2>All projects</h2>
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" [(ngModel)]="searchText" placeholder="Search projects...">
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="projects-grid">
+        @for (i of [1,2,3,4,5,6]; track i) {
+          <div class="skeleton"></div>
+        }
+      </div>
+    } @else {
+      <div class="projects-grid">
+        @for (p of filtered; track p.id) {
+          <div class="project-card" (click)="openProject(p.id)">
+            <div class="card-top">
+              <div class="project-icon"><i class="bi bi-folder2-open"></i></div>
+              <span class="badge" [ngClass]="statusClass(p.status)">{{ p.status }}</span>
+            </div>
+            <div class="card-body">
+              <h3 class="project-name">{{ p.name }}</h3>
+              <p class="project-desc">{{ p.description || 'No description' }}</p>
+            </div>
+            <div class="card-footer">
+              <div class="tech-stack">
+                <span class="tech-pill">{{ p.javaVersion }}</span>
+                <span class="tech-pill">{{ p.buildTool }}</span>
+              </div>
+              <span class="time-ago">{{ p.updatedAt | date:'mediumDate' }}</span>
+            </div>
+          </div>
+        }
+        <div class="new-card" (click)="openModal()">
+          <i class="bi bi-plus-circle-dotted"></i>
+          <span>New project</span>
+        </div>
+      </div>
+    }
+  </main>
+</div>
+
+@if (showModal) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h2><i class="bi bi-folder-plus"></i> Create project</h2>
+        <button class="icon-btn" (click)="closeModal()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submitCreate()" class="modal-form">
+        @if (createError) {
+          <div class="form-error-banner">{{ createError }}</div>
+        }
+
+        <div class="field">
+          <label>Project name <span class="req">*</span></label>
+          <input formControlName="name" placeholder="e.g. Payment Service"/>
+          @if (form.get('name')?.invalid && form.get('name')?.touched) {
+            <span class="ferr">Project name is required</span>
+          }
+        </div>
+
+        <div class="field">
+          <label>Description</label>
+          <textarea formControlName="description" placeholder="What does this project do?" rows="2"></textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Java version <span class="req">*</span></label>
+            <select formControlName="javaVersion">
+              <option>Java 17</option><option>Java 21</option><option>Java 11</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Build tool <span class="req">*</span></label>
+            <select formControlName="buildTool">
+              <option>Maven</option><option>Gradle</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Group ID <span class="req">*</span></label>
+            <input formControlName="groupId" placeholder="com.example"/>
+          </div>
+          <div class="field">
+            <label>Artifact ID <span class="req">*</span></label>
+            <input formControlName="artifactId" placeholder="my-service"/>
+            @if (form.get('artifactId')?.invalid && form.get('artifactId')?.touched) {
+              <span class="ferr">Required</span>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Package name</label>
+          <input formControlName="packageName" placeholder="com.example.myservice"/>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Spring Boot version <span class="req">*</span></label>
+            <select formControlName="springBootVersion">
+              <option>3.2.x</option><option>3.1.x</option><option>3.0.x</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Git invite email <span class="req">*</span></label>
+            <input formControlName="gitInviteEmail" type="email" placeholder="teammate@example.com"/>
+            @if (form.get('gitInviteEmail')?.invalid && form.get('gitInviteEmail')?.touched) {
+              <span class="ferr">Valid email required</span>
+            }
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="creating">
+            @if (creating) { <i class="bi bi-hourglass-split"></i> Creating... }
+            @else { <i class="bi bi-rocket-takeoff"></i> Create project }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
